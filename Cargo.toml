@@ -1,8 +1,14 @@
 [package]
 name = "stivale2"
+description = "Rust crate for 64-bit, stivale2 compliant kernels"
 version = "0.1.0"
 edition = "2021"
+
 authors = ["xvanc <xvancm@gmail.com>"]
+license = "BSD-2-Clause"
+
+repository = "https://github.com/xvanc/stivale2-rust"
+readme = "README.md"
 
 [dependencies]
 bitflags = "1.3"
