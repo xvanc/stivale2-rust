@@ -1,0 +1,8 @@
+[package]
+name = "stivale2"
+version = "0.1.0"
+edition = "2021"
+authors = ["xvanc <xvancm@gmail.com>"]
+
+[dependencies]
+bitflags = "1.3"
