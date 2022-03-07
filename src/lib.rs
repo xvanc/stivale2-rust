@@ -52,7 +52,11 @@ pub trait StivaleTag {
 }
 
 /// Stivale Header Tag
+///
+/// [`StivaleTag`]s attached to the [`StivaleHeader`](header::StivaleHeader).
 pub trait HeaderTag {}
 
 /// Stivale Struct Tag
+///
+/// [`StivaleTag`]s attached to the [`StivaleStruct`](struc::StivaleStruct).
 pub trait StructTag {}

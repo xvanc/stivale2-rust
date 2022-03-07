@@ -4,13 +4,12 @@
  */
 //! Stivale2 Header
 //!
-//! # Tags
-//!
-//! The kernel attaches to the [`StivaleHeader`] a linked list of tags in order to request various
-//! features defined by the stivale2 protocol. Compliant bootloaders are free to ignore any tags
-//! which they don't recognize; it is the kernel's responsiblilty to verify that the bootloader has
-//! processed the tags provided to it, either by the tags returned to the kernel in the
-//! [`StivaleStruct`] structure, or other means provided by the protocol.
+//! Stivale2 compliant kernels use the [`StivaleHeader`] to pass information to the bootloader.
+//! The kernel attaches various [tags](HeaderTag) to the header to request various features defined
+//! by the stivale2 protocol. Compliant bootloaders are free to ignore any tags which they don't
+//! recognize; it is the kernel's responsiblilty to verify that the bootloader has processed the
+//! tags provided to it, either by the tags returned to the kernel in the [`StivaleStruct`], or via
+//! other means provided by the protocol.
 
 use crate::{struc::StivaleStruct, HeaderTag, StivaleTag, Tag};
 use core::ptr::NonNull;
@@ -55,7 +54,7 @@ bitflags::bitflags! {
 /// Kernel Header
 ///
 /// The kernel uses this structure to provide information to the bootloader about how it wants to
-/// be booted.
+/// be booted. See the [module-level documentation](self) for more information.
 #[repr(C)]
 pub struct StivaleHeader {
     entry_point: Option<EntryPointFn>,
@@ -181,6 +180,14 @@ macro_rules! header_tag {
 }
 
 header_tag! {
+    /// Any Video Tag
+    ///
+    /// This tag is used to indicate that the kernel does *not* require a graphical framebuffer to
+    /// be initialized. The kernel can select it's [preference](VideoPreference) for a graphical or
+    /// text mode buffer.
+    ///
+    /// If neither this tag nor [`FramebufferHeaderTag`] are provided, the bootloader will attempt
+    /// to force CGA text mode.
     struct AnyVideoHeaderTag : 0xc75c9fa92a44c4db {
         pref: VideoPreference,
     }
@@ -188,8 +195,8 @@ header_tag! {
 
 #[repr(u64)]
 pub enum VideoPreference {
-    Linear = 0,
-    NoLinear = 1,
+    Graphical = 0,
+    TextMode = 1,
 }
 
 impl AnyVideoHeaderTag {
@@ -202,6 +209,13 @@ impl AnyVideoHeaderTag {
 }
 
 header_tag! {
+    /// Framebuffer Tag
+    ///
+    /// This tag is used to request that the bootloader set up a graphical framebuffer for the
+    /// kernel and, optionally, specify a preferred resolution.
+    ///
+    /// If only this tag, and not the [`AnyVideoHeaderTag`] is provided, the bootloader will assume
+    /// the kernel requires a graphical framebuffer to be initialized.
     struct FramebufferHeaderTag : 0x3ecc1bc43d0f7971 {
         width: u16,
         height: u16,
@@ -211,6 +225,7 @@ header_tag! {
 }
 
 impl FramebufferHeaderTag {
+    /// Create a new framebuffer tag requesting the best available resolution
     pub const fn new() -> FramebufferHeaderTag {
         Self {
             tag: Self::tag_for(),
@@ -221,16 +236,19 @@ impl FramebufferHeaderTag {
         }
     }
 
+    /// Specify a preferred width (in pixels)
     pub const fn width(mut self, width: u16) -> Self {
         self.width = width;
         self
     }
 
+    /// Specify a preferred height (in pixels)
     pub const fn height(mut self, height: u16) -> Self {
         self.height = height;
         self
     }
 
+    /// Specify a preferred bits-per-pixel
     pub const fn bpp(mut self, bpp: u16) -> Self {
         self.bpp = bpp;
         self
@@ -238,6 +256,9 @@ impl FramebufferHeaderTag {
 }
 
 header_tag! {
+    /// Terminal Tag
+    ///
+    /// This tag requests that the bootloader set up a runtime terminal for the kernel's use.
     struct TerminalHeaderTag : 0xa85d499b1823be72 {
         flags: TerminalHeaderFlags,
         callback: Option<TerminalCallbackFn>,
@@ -261,6 +282,7 @@ impl TerminalHeaderTag {
         }
     }
 
+    /// Provide a callback function for the terminal to call to handle events
     pub const fn callback(mut self, callback: TerminalCallbackFn) -> Self {
         self.callback = Some(callback);
         self.flags = self.flags.union(TerminalHeaderFlags::CALLBACK);
@@ -269,6 +291,16 @@ impl TerminalHeaderTag {
 }
 
 header_tag! {
+    /// 5-level Paging Tag
+    ///
+    /// This tag requests that the
+    struct FiveLevelPagingHeaderTag : 0x932f477032007e8f;
+}
+
+header_tag! {
+    /// HHDM Slide Tag
+    ///
+    ///
     struct HhdmSlideHeaderTag : 0xdc29269c2af53d1d {
         flags: HhdmSlideHeaderFlags,
         align: u64,
@@ -295,6 +327,11 @@ impl HhdmSlideHeaderTag {
         self
     }
 
+    /// Specify a minimum alignment for the slide
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `align` is less than 2 MiB.
     pub const fn align(mut self, align: u64) -> Self {
         assert!(
             align >= 0x20_0000,
@@ -306,6 +343,11 @@ impl HhdmSlideHeaderTag {
 }
 
 header_tag! {
+    /// Unmap Null Tag
+    ///
+    /// This tag requests that the bootloader unmap the 0th page of the virtual address space
+    /// before passing control to the kernel. This will cause null-pointer dereferences (and any
+    /// pointer within the first page) to trigger a page fault.
     struct UnmapNullHeaderTag : 0x92919432b16fe7e7;
 }
 
@@ -318,6 +360,10 @@ impl UnmapNullHeaderTag {
 }
 
 header_tag! {
+    /// SMP Tag
+    ///
+    /// This tag requests that the bootloader also start up any application processors (APs) for
+    /// the kernel.
     struct SmpHeaderTag : 0x1ab015085f3273df {
         flags: SmpHeaderFlags,
     }
@@ -325,20 +371,20 @@ header_tag! {
 
 bitflags::bitflags! {
     pub struct SmpHeaderFlags : u64 {
+        /// x2APIC
+        ///
+        /// Set up the Local APICs in x2APIC mode if supported by the hardware, otherwise use xAPIC
+        /// mode.
         const X2APIC = 1 << 0;
     }
 }
 
 impl SmpHeaderTag {
-    pub const fn new() -> SmpHeaderTag {
+    /// Create a new SMP tag with the given `flags`
+    pub const fn new(flags: SmpHeaderFlags) -> SmpHeaderTag {
         Self {
             tag: Self::tag_for(),
-            flags: SmpHeaderFlags::empty(),
+            flags,
         }
-    }
-
-    pub const fn flags(mut self, flags: SmpHeaderFlags) -> Self {
-        self.flags = flags;
-        self
     }
 }
