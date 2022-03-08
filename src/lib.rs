@@ -25,7 +25,7 @@ mod private {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Tag {
     pub(crate) ident: u64,
     pub(crate) next: Option<NonNull<Tag>>,
@@ -60,3 +60,41 @@ pub trait HeaderTag {}
 ///
 /// [`StivaleTag`]s attached to the [`StivaleStruct`](struc::StivaleStruct).
 pub trait StructTag {}
+
+#[repr(C, align(16))]
+pub struct Anchor {
+    signature: [u8; 15],
+    bits: u8,
+    phys_load_addr: u64,
+    phys_bss_start: u64,
+    phys_bss_end: u64,
+    phys_stivale2hdr: u64,
+}
+
+impl Anchor {
+    pub const fn new(
+        bits: u8,
+        phys_load_addr: u64,
+        phys_bss_start: u64,
+        phys_bss_end: u64,
+        phys_stivale2hdr: u64,
+    ) -> Anchor {
+        Anchor {
+            signature: *b"STIVALE2 ANCHOR",
+            bits,
+            phys_load_addr,
+            phys_bss_start,
+            phys_bss_end,
+            phys_stivale2hdr,
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub struct Guid {
+    pub a: u32,
+    pub b: u16,
+    pub c: u16,
+    pub d: [u8; 8],
+}

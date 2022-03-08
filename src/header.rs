@@ -7,7 +7,7 @@
 //! Stivale2 compliant kernels use the [`StivaleHeader`] to pass information to the bootloader.
 //! The kernel attaches various [tags](HeaderTag) to the header to request various features defined
 //! by the stivale2 protocol. Compliant bootloaders are free to ignore any tags which they don't
-//! recognize; it is the kernel's responsiblilty to verify that the bootloader has processed the
+//! recognize; it is the kernel's responsibility to verify that the bootloader has processed the
 //! tags provided to it, either by the tags returned to the kernel in the [`StivaleStruct`], or via
 //! other means provided by the protocol.
 
@@ -28,7 +28,7 @@ bitflags::bitflags! {
     pub struct HeaderFlags : u64 {
         /// Provide all pointers in the HHDM
         ///
-        /// When this flag is specified, all physical pointers (not explicity defined as physical
+        /// When this flag is specified, all physical pointers (not explicitly defined as physical
         /// addresses) are offset into the Higher Half Direct Map.
         const HHDM_POINTERS = 1 << 1;
         /// Enable Protected Memory Ranges
@@ -47,7 +47,7 @@ bitflags::bitflags! {
         ///
         /// When this flag is set, the bootloader will not fail to boot if it cannot allocate
         /// memory below 1 MiB.
-        const NO_REQ_LOWMEM = 1 << 4;
+        const NO_REQ_LOW_MEM = 1 << 4;
     }
 }
 
@@ -265,7 +265,8 @@ header_tag! {
     }
 }
 
-pub type TerminalCallbackFn = extern "C" fn() -> i32;
+/// Terminal Callback Function
+pub type TerminalCallbackFn = extern "C" fn(kind: u64, u64, u64, u64) -> i32;
 
 bitflags::bitflags! {
     pub struct TerminalHeaderFlags : u64 {
