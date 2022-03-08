@@ -111,14 +111,32 @@ struct_tag! {
     /// flag and has mapped the kernel as specified by its ELF segments.
     struct PmrsTag : 0x5df266a64047b6bd {
         len: u64,
-        entries: [Pmr; 0],
+        pmrs: [Pmr; 0],
+    }
+}
+
+impl core::fmt::Debug for PmrsTag {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("PmrsTag")
+            .field("tag", &self.tag)
+            .field("len", &self.len)
+            .field("pmrs", &core::ops::Deref::deref(self))
+            .finish()
+    }
+}
+
+impl core::ops::Deref for PmrsTag {
+    type Target = [Pmr];
+
+    fn deref(&self) -> &Self::Target {
+        self.pmrs()
     }
 }
 
 impl PmrsTag {
     /// Returns the [`Pmr`] entries as a slice
     pub fn pmrs(&self) -> &[Pmr] {
-        unsafe { core::slice::from_raw_parts(self.entries.as_ptr(), self.len as usize) }
+        unsafe { core::slice::from_raw_parts(self.pmrs.as_ptr(), self.len as usize) }
     }
 }
 
@@ -131,7 +149,7 @@ bitflags::bitflags! {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Pmr {
     base: u64,
     size: u64,
@@ -175,6 +193,7 @@ struct_tag! {
     /// This tag returns the physical and virtual load addresses of the kernel image. This tag is
     /// only returned when PMRs are enabled ([`ENABLE_PMR`]) with fully-virtual mappings
     /// ([`V`]), and the bootloader supports the feature.
+    #[derive(Debug)]
     struct KernelBaseTag : 0x060d78874a2a8af0 {
         phys_base: u64,
         virt_base: u64,
@@ -197,6 +216,7 @@ struct_tag! {
     /// Kernel Command Line
     ///
     /// This tag returns the kernel command line passed from the bootloader.
+    #[derive(Debug)]
     struct CmdlineTag : 0xe5e76a1b4597a781 {
         cmdline: Option<NonNull<u8>>,
     }
@@ -220,6 +240,16 @@ struct_tag! {
     }
 }
 
+impl core::fmt::Debug for MmapTag {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("MmapTag")
+            .field("tag", &self.tag)
+            .field("len", &self.len)
+            .field("entries", &core::ops::Deref::deref(self))
+            .finish()
+    }
+}
+
 impl core::ops::Deref for MmapTag {
     type Target = [MmapEntry];
 
@@ -234,6 +264,7 @@ impl core::ops::Deref for MmapTag {
 /// [`Usable`](MmapKind::Usable) and [`BootloaderReclaim`](MmapKind::BootloaderReclaim) regions
 /// are guaranteed to have both their base and size aligned to the smallest page size.
 #[repr(C)]
+#[derive(Debug)]
 pub struct MmapEntry {
     base: u64,
     size: u64,
@@ -327,6 +358,7 @@ struct_tag! {
     ///
     /// This tag is returned when the bootloader has set up a graphical framebuffer for the kernel
     /// to use.
+    #[derive(Debug)]
     struct FramebufferTag : 0x506461d2950408fa {
         addr: u64,
         width: u16,
@@ -411,6 +443,7 @@ struct_tag! {
     ///
     /// This tag is returned when the bootloader has set up a GCA text mode buffer for the kernel
     /// to use.
+    #[derive(Debug)]
     struct TextModeTag : 0x38d74c23e0dca893 {
         addr: u64,
         _unused: u16,
@@ -440,10 +473,39 @@ impl TextModeTag {
 }
 
 struct_tag! {
+    /// EDID Information Tag
+    ///
+    /// This tag reports the EDID information structure, if one was provided by the firmware.
+    struct EdidInfoTag : 0x968609d7af96b845 {
+        len: u64,
+        data: [u8; 0]
+    }
+}
+
+impl core::fmt::Debug for EdidInfoTag {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("EdidInfoTag")
+            .field("tag", &self.tag)
+            .field("len", &self.len)
+            .field("data", &self.data.as_ptr()).finish()
+    }
+}
+
+impl EdidInfoTag {
+    /// Returns the EDID information data as a slice
+    pub fn data(&self) -> &[u8] {
+        unsafe {
+            core::slice::from_raw_parts(self.data.as_ptr(), self.len as _)
+        }
+    }
+}
+
+struct_tag! {
     /// Framebuffer MTRR
     ///
     /// This tag is returns when the bootloader has successfully set up MTRR write-combining for
     /// the framebuffer.
+    #[derive(Debug)]
     #[deprecated = concat!(
         "This tag has been deprecated by the stivale2 protocol",
         " and may not be supported by more recent bootloaders."
@@ -452,6 +514,7 @@ struct_tag! {
 }
 
 struct_tag! {
+    #[derive(Debug)]
     struct TerminalTag : 0xc2b3f4c3233b0974 {
         flags: u32,
         cols: u16,
@@ -509,6 +572,7 @@ struct_tag! {
     /// Modules Tag
     ///
     /// This tag enumerates any modules that were loaded on behalf of the kernel.
+    #[derive(Debug)]
     struct ModulesTag : 0x4b6fe466aade04ce {
         len: u64,
         mods: [Module; 0],
@@ -516,6 +580,7 @@ struct_tag! {
 }
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct Module {
     start: u64,
     end: u64,
@@ -543,6 +608,7 @@ struct_tag! {
     /// ACPI Root System Description Pointer (RSDP) Tag
     ///
     /// This tag returns the location of the RSDP structure.
+    #[derive(Debug)]
     struct RsdpTag : 0x9e1786930a375e78 {
         addr: u64,
     }
@@ -559,6 +625,7 @@ struct_tag! {
     /// SMBIOS Tag
     ///
     /// This tag returns the location of the SMBIOS entry point.
+    #[derive(Debug)]
     struct SmBiosTag : 0x274bd246c62bf7d1 {
         flags: u64,
         entry32: u64,
@@ -592,6 +659,7 @@ struct_tag! {
     /// Epoch Tag
     ///
     /// This tag returns the current UNIX epoch as reported by the RTC, if any.
+    #[derive(Debug)]
     struct EpochTag : 0x566a7bed888e1407 {
         epoch: u64,
     }
@@ -608,6 +676,7 @@ struct_tag! {
     /// Firmware Tag
     ///
     /// This tag reports information about the firmware.
+    #[derive(Debug)]
     struct FirmwareTag : 0x359d837855e3858c {
         flags: u64,
     }
@@ -617,6 +686,7 @@ struct_tag! {
     /// EFI System Table Tag
     ///
     /// This tag returns a pointer to the EFI system table, if available.
+    #[derive(Debug)]
     struct EfiSystemTableTag : 0x4bc5ec15845b558e {
         addr: u64,
     }
@@ -630,6 +700,7 @@ impl EfiSystemTableTag {
 
 struct_tag! {
     /// Kernel File Tag
+    #[derive(Debug)]
     struct KernelFileTag : 0xe599d90c2975584a {
         addr: u64,
     }
@@ -643,6 +714,7 @@ impl KernelFileTag {
 
 struct_tag! {
     /// Kernel File v2 Tag
+    #[derive(Debug)]
     struct KernelFileV2Tag : 0x37c13018a02c6ea2 {
         addr: u64,
         len: u64,
@@ -659,6 +731,7 @@ struct_tag! {
     /// Boot Volume Tag
     ///
     /// This tag returns the GUID of the volume and partition from which the kernel was loaded.
+    #[derive(Debug)]
     struct BootVolumeTag : 0x9b4358364c19ee62 {
         flags: u64,
         guid: Guid,
@@ -705,6 +778,7 @@ struct_tag! {
     /// Kernel Slide Tag
     ///
     /// This tag returns the slide that was applied by the bootloader to the kernel's load address.
+    #[derive(Debug)]
     struct KernelSlideTag : 0xee80847d01506c57 {
         slide: u64,
     }
@@ -718,6 +792,7 @@ impl KernelSlideTag {
 }
 
 struct_tag! {
+    #[derive(Debug)]
     struct SmpTag : 0x34d1d96339647025 {
         flags: u64,
         bsp_lapic_id: u32,
@@ -728,6 +803,7 @@ struct_tag! {
 }
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct SmpInfo {
     puid: u32,
     lapic_id: u32,
@@ -756,6 +832,8 @@ impl SmpInfo {
     pub unsafe fn start(&self, stack: *mut u8, addr: u64, arg: u64) {
         self.stack_ptr.store(stack as _, Ordering::SeqCst);
         self.func_arg.store(arg, Ordering::SeqCst);
+
+        // The bootloader sets up the APs to poll this field for an atomic write.
         self.instr_ptr.store(addr, Ordering::SeqCst);
     }
 }
@@ -764,6 +842,7 @@ struct_tag! {
     /// PXE Server Tag
     ///
     /// This tag reports the IP address of the PXE server from which the kernel was booted.
+    #[derive(Debug)]
     struct PxeServerTag : 0x29d1e96239247032 {
         server_ipv4: u32,
     }
@@ -777,6 +856,7 @@ impl PxeServerTag {
 }
 
 struct_tag! {
+    #[derive(Debug)]
     struct Mmio32UartTag : 0xb813f9b8dbc78797 {
         addr: u64,
     }
@@ -790,6 +870,7 @@ impl Mmio32UartTag {
 
 struct_tag! {
     /// Device Tree Blob Tag
+    #[derive(Debug)]
     struct DtbTag : 0xabb29bd49a2833fa {
         addr: u64,
         len: u64,
@@ -809,13 +890,15 @@ impl DtbTag {
 struct_tag! {
     /// Higher Half Direct Map Tag
     ///
-    /// This tag reports the address of the HHDM.
+    /// This tag reports the address of the Higher Half Direct Map (HHDM).
+    #[derive(Debug)]
     struct HhdmTag : 0xb0ed257db18cb58f {
         addr: u64,
     }
 }
 
 impl HhdmTag {
+    /// Returns the address of the HHDM
     pub const fn addr(&self) -> u64 {
         self.addr
     }

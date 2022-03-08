@@ -298,6 +298,12 @@ header_tag! {
     struct FiveLevelPagingHeaderTag : 0x932f477032007e8f;
 }
 
+impl FiveLevelPagingHeaderTag {
+    pub const fn new() -> FiveLevelPagingHeaderTag {
+        Self { tag: Self::tag_for() }
+    }
+}
+
 header_tag! {
     /// HHDM Slide Tag
     ///
@@ -315,17 +321,14 @@ bitflags::bitflags! {
 }
 
 impl HhdmSlideHeaderTag {
-    pub const fn new() -> HhdmSlideHeaderTag {
+    pub const MIN_ALIGN: u64 = 0x20_0000;
+
+    pub const fn new(flags: HhdmSlideHeaderFlags) -> HhdmSlideHeaderTag {
         Self {
             tag: Self::tag_for(),
-            flags: HhdmSlideHeaderFlags::empty(),
-            align: 0,
+            flags,
+            align: Self::MIN_ALIGN,
         }
-    }
-
-    pub const fn flags(mut self, flags: HhdmSlideHeaderFlags) -> Self {
-        self.flags = flags;
-        self
     }
 
     /// Specify a minimum alignment for the slide
@@ -335,7 +338,7 @@ impl HhdmSlideHeaderTag {
     /// This function will panic if `align` is less than 2 MiB.
     pub const fn align(mut self, align: u64) -> Self {
         assert!(
-            align >= 0x20_0000,
+            align >= Self::MIN_ALIGN,
             "The HHDM must be aligned to at least 2 MiB"
         );
         self.align = align;
