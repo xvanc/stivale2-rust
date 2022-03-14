@@ -802,6 +802,18 @@ struct_tag! {
     }
 }
 
+impl SmpTag {
+    /// Returns the APIC ID of the bootstrap processor
+    pub fn bsp_lapic_id(&self) -> u32 {
+        self.bsp_lapic_id
+    }
+
+    /// Returns the array of [`SmpInfo`] describing each processor
+    pub fn smp_info(&self) -> &[SmpInfo] {
+        unsafe { core::slice::from_raw_parts(self.smp_info.as_ptr(), self.num_cpu as usize) }
+    }
+}
+
 #[repr(C)]
 #[derive(Debug)]
 pub struct SmpInfo {
